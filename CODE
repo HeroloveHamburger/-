@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+from time import sleep
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import pandas as pd
+options = webdriver.ChromeOptions()
+ 
+csv_file = "PICK.csv"
+ 
+#關掉自動控制顯示
+options.add_argument('disable-infobars')
+ 
+#注意!!!這邊需要使用到個人User資料
+#使用個人資料開啟瀏覽器以防止它創建默認的瀏覽器
+#路徑不同請自行更改個人路徑
+ 
+options.add_argument("user-data-dir=C:\\Users\\USER\\AppData\\Local\\Google\\Chrome\\User Data")
+pd.options.display.float_format = '{:,.0f}'.format
+broswer = webdriver.Chrome(chrome_options=options)
+ 
+while True:
+    broswer.get("https://h...content-available-to-author-only...m.tw/notifylist.php?owner=a891030&t=A")
+    for dd in range(0,30):
+        gapminder = pd.read_csv(csv_file)
+        index = len(gapminder)
+        sleep(0.3)   
+        try:
+            #搜索全部對話
+            FindaText = broswer.find_element_by_xpath("//div[@id ='BH-master']/table[@class ='BH-table TB2 MSG-page']/tbody/tr["+str(dd)+"]/td[2]")
+            #搜索誰的帳號
+            FindaWHO = broswer.find_element_by_xpath("//div[@id ='BH-master']/table[@class ='BH-table TB2 MSG-page']/tbody/tr["+str(dd)+"]/td[2]/a[1]")
+            #搜索哪邊文章
+            FindaWHERE = broswer.find_element_by_xpath("//div[@id ='BH-master']/table[@class ='BH-table TB2 MSG-page']/tbody/tr["+str(dd)+"]/td[2]/a[2]")
+            http = FindaWHERE.get_attribute("href")
+            #用字串判斷是不是標記
+            if FindaText.text.find("提到了你") !=-1 :
+                for i in range(index):
+                    #從已存入的CSV檔找有沒有回覆過如果有就跳過
+                    if FindaWHO.text == str(gapminder['帳號'][i]):
+                        if FindaText.text ==str(gapminder['標記內容'][i]):
+                            print("發現相同")
+                            break
+                    #如果沒有就先記錄
+                    if i == index-1 :
+                        gapminder.loc[i+1,"帳號"] = str(FindaWHO.text)
+                        gapminder.loc[i+1,"標記內容"] = str(FindaText.text)
+                        gapminder.to_csv(csv_file,index = False)
+                        sleep(0.5)
+                        #然後跳到帳號小屋擷取暱稱
+                        broswer.get(FindaWHO.get_attribute("href"))
+                        sleep(0.1)
+                        FindaWHOName = broswer.find_elements_by_class_name("TS2")[1]
+                        Name = FindaWHOName.text
+                        print(FindaWHOName.text)  
+                        #在去要回覆的文章
+                        broswer.get(http)
+                        sleep(1)
+                        #搜尋留言框
+                        message = broswer.find_element_by_css_selector('textarea.content-edit')
+                        #做下面這一段事件
+                        sendmessage = "@" + Name
+                        message.click()
+                        sleep(0.5)
+                        message.send_keys(sendmessage)
+                        sleep(0.5)
+                        message.send_keys(Keys.ENTER)
+                        sleep(0.5)
+                        message.send_keys("黑暗怪獸機器人啟動...")
+                        sleep(0.5)
+                        message.send_keys(Keys.ENTER)
+                        sleep(1)    
+                        #完成後回去總通知網址繼續搜尋
+                        broswer.get("https://h...content-available-to-author-only...m.tw/notifylist.php?owner=a891030&t=A")
+ 
+        except:
+            print("nope")
+            continue
+    #完成30次搜尋後等待1分鐘
+    print("等待...")
+    sleep(60)
